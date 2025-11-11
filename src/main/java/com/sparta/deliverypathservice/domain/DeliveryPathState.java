@@ -10,6 +10,4 @@ public enum DeliveryPathState {
     VENDOR_MOVING,
     VENDOR_COMPLETE,
     ;
-
-    private String state;
 }

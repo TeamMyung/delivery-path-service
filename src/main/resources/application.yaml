@@ -5,6 +5,22 @@ spring:
   application:
     name: delivery-path-service
 
+  jpa: #JPA 설정
+    hibernate:
+      ddl-auto: create-drop         #테이블과 객체가 일치하는지 확인, create: 테이블 생성, create-drop: 서버 끄면 테이블 drop하고 키면 create, update: 다른 점있으면 업데이트, validate: 맵핑만 확인, none: 아무것도 안 함
+    properties:
+      hibernate:
+        show_sql: true           #실행한 SQL문 출력
+        format_sql: true         #SQL문 출력할 때 읽기 쉬운 형태로 출력
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  datasource: #데이터베이스 연결 설정
+    url: jdbc:postgresql://localhost:5432/postgres
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: 1234!
+
 eureka:
   instance:
     prefer-ip-address: true
