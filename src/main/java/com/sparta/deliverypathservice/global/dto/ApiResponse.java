@@ -1,4 +1,4 @@
-package com.sparta.deliverypathservice.global.config;
+package com.sparta.deliverypathservice.global.dto;
 
 import com.sparta.deliverypathservice.global.exception.ErrorCode;
 import lombok.AllArgsConstructor;
