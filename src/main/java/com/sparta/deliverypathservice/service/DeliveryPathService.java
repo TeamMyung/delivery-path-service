@@ -106,20 +106,26 @@ public class DeliveryPathService {
 
         if(role.equals(UserRole.MASTER)) { //어드민
             //모든 항목에서 조회
-            DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow();
+            DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow(() ->
+                    new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
+            );
             return getDeliveryPathResDto.toDto(entity);
         }
 
         if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) { //허브 관리자
             //삭제x && (출발허브=담당허브 || 도착허브=담당허브)
             UUID hubId = user.getHubId();
-            DeliveryPath entity = deliveryPathRepository.findByStartHubIdOrEndHubIdAndDeletedAtIsNullAndId(hubId, hubId, id).orElseThrow();
+            DeliveryPath entity = deliveryPathRepository.findByStartHubIdOrEndHubIdAndDeletedAtIsNullAndId(hubId, hubId, id).orElseThrow(() ->
+                    new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
+            );
             return getDeliveryPathResDto.toDto(entity);
         }
 
         if(role.equals(UserRole.VENDOR_MANAGER)) { //업체담당자
             //삭제x && vendorId=담당업체(배송에서 확인)
-            DeliveryPath entity = deliveryPathRepository.findByIdAndDeletedAtIsNull(id).orElseThrow();
+            DeliveryPath entity = deliveryPathRepository.findByIdAndDeletedAtIsNull(id).orElseThrow(() ->
+                    new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
+            );
             return getDeliveryPathResDto.toDto(entity);
         }
 
@@ -129,7 +135,9 @@ public class DeliveryPathService {
 
     @Transactional
     public UpdateDeliveryPathResDto updateDeliveryPath(UUID id, UpdateDeliveryPathReqDto reqDto) {
-        DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow();
+        DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow(() ->
+                new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 수정 : 대상 레코드를 찾을 수 없습니다")
+        );
         entity.setStatus(reqDto.getStatus());
         entity.setHubDeliveryUserId(reqDto.getHubDeliveryUserId());
 
@@ -141,8 +149,11 @@ public class DeliveryPathService {
         List<DeliveryPath> entities = new ArrayList<>();
         ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
         User user = apiResponse.getData().getUser();
+
         paths.forEach(id -> {
-            DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow();
+            DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow( () ->
+                new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 삭제 : 대상 레코드를 찾을 수 없습니다")
+            );
             entity.delete(user.getUserId());
             entities.add(entity);
         });
@@ -151,7 +162,10 @@ public class DeliveryPathService {
 
     @Transactional
     public UpdateDeliveryPathStateResDto updateDeliveryPathState(UUID id, DeliveryPathState state) {
-        DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow();
+
+        DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow( () ->
+                new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 상태 변경 : 대상 레코드를 찾을 수 없습니다")
+        );
 
         if(state.equals(DeliveryPathState.HUB_COMPLETE)) {
             //TODO 실제 시간, 거리 계산

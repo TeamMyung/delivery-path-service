@@ -46,7 +46,7 @@ public class DeliveryPathApiController {
     @PatchMapping("{id}/state")
     public ApiResponse<UpdateDeliveryPathStateResDto> updateDeliveryPathState(
             @PathVariable UUID id,
-            DeliveryPathState state
+            @RequestParam DeliveryPathState state
     ) {
         UpdateDeliveryPathStateResDto data = deliveryPathService.updateDeliveryPathState(id, state);
         return new ApiResponse<>(data);

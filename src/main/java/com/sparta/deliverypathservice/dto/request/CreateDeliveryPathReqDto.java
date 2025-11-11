@@ -1,13 +1,12 @@
 package com.sparta.deliverypathservice.dto.request;
 
 import com.sparta.deliverypathservice.domain.DeliveryPath;
+import com.sparta.deliverypathservice.global.client.DeliveryClient;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.UUID;
 
