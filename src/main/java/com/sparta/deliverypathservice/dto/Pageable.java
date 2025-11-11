@@ -1,5 +1,8 @@
 package com.sparta.deliverypathservice.dto;
 
+import lombok.Getter;
+
+@Getter
 public class Pageable {
 
     private int page;
