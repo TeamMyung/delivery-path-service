@@ -1,19 +1,17 @@
 package com.sparta.deliverypathservice.dto.request;
 
-import com.sparta.deliverypathservice.domain.DeliveryPathState;
+import com.sparta.deliverypathservice.dto.Pageable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateDeliveryPathReqDto {
+public class GetDeliveryPathListReqDto {
 
-    private DeliveryPathState status;
-    private Long hubDeliveryUserId;
+    private Pageable pageable;
+    private String search;
 }

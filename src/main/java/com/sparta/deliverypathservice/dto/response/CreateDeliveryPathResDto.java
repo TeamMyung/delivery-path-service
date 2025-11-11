@@ -1,6 +1,7 @@
 package com.sparta.deliverypathservice.dto.response;
 
 import com.sparta.deliverypathservice.domain.DeliveryPath;
+import com.sparta.deliverypathservice.domain.DeliveryPathState;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -22,7 +23,7 @@ public class CreateDeliveryPathResDto {
     private int sequence;
 
     @NotNull
-    private String status;
+    private DeliveryPathState status;
 
     @NotNull
     private UUID startHubId;
@@ -40,13 +41,31 @@ public class CreateDeliveryPathResDto {
     private int actual_time;
 
     @NotNull
-    private UUID hubDeliveryUserId;
+    private Long hubDeliveryUserId;
 
     @NotNull
     private LocalDateTime createdAt;
 
     @NotNull
     private LocalDateTime updatedAt;
+
+    public static CreateDeliveryPathResDto toDto(DeliveryPath entity) {
+        return CreateDeliveryPathResDto.builder()
+                .deliveryPathId(entity.getDeliveryPathId())
+                .deliveryId(entity.getDeliveryId())
+                .sequence(entity.getSequence())
+                .status(entity.getStatus())
+                .startHubId(entity.getStartHubId())
+                .endHubId(entity.getEndHubId())
+                .estimated_distance(entity.getEstimated_distance())
+                .estimated_time(entity.getEstimated_time())
+                .actual_distance(entity.getActual_distance())
+                .actual_time(entity.getActual_time())
+                .hubDeliveryUserId(entity.getHubDeliveryUserId())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
 
     public DeliveryPath toEntity() {
         return DeliveryPath.builder()
