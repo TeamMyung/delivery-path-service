@@ -14,7 +14,9 @@ public interface DeliveryPathRepository extends JpaRepository<DeliveryPath, UUID
 
     Page<DeliveryPath> findAllByHubDeliveryUserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
 
-    Optional<DeliveryPath> findByStartHubIdOrEndHubIdAndDeletedAtIsNullAndId(UUID hubId, UUID hubId1, UUID id);
+    Optional<DeliveryPath> findByDeliveryPathIdAndDeletedAtIsNullAndStartHubIdOrDeliveryPathIdAndDeletedAtIsNullAndEndHubId(UUID id1, UUID hubId1, UUID id2, UUID hubId2);
 
-    Optional<DeliveryPath> findByIdAndDeletedAtIsNull(UUID id);
+    Optional<DeliveryPath> findByDeliveryPathIdAndDeletedAtIsNull(UUID id);
+
+    Optional<DeliveryPath> findTopByOrderByCreatedAtDesc();
 }

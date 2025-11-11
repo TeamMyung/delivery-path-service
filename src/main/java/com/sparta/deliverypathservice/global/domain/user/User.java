@@ -1,6 +1,5 @@
 package com.sparta.deliverypathservice.global.domain.user;
 
-import com.sparta.deliverypathservice.global.entity.BaseEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,7 +11,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User extends BaseEntity {
+public class User {
 
     private Long userId;
 
@@ -34,5 +33,5 @@ public class User extends BaseEntity {
 
     private UUID vendorId;
 
-    private Boolean isDeliveryManager = false;
+    private Boolean isDeliveryManager;
 }
