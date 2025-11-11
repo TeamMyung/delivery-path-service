@@ -2,8 +2,6 @@ package com.sparta.deliverypathservice.service;
 
 import com.sparta.deliverypathservice.domain.DeliveryPath;
 import com.sparta.deliverypathservice.domain.DeliveryPathState;
-import com.sparta.deliverypathservice.global.domain.user.User;
-import com.sparta.deliverypathservice.global.domain.user.UserRole;
 import com.sparta.deliverypathservice.dto.request.CreateDeliveryPathReqDto;
 import com.sparta.deliverypathservice.dto.request.GetDeliveryPathListReqDto;
 import com.sparta.deliverypathservice.dto.request.UpdateDeliveryPathReqDto;
@@ -12,6 +10,8 @@ import com.sparta.deliverypathservice.global.client.DeliveryClient;
 import com.sparta.deliverypathservice.global.client.HubPathClient;
 import com.sparta.deliverypathservice.global.client.SlackClient;
 import com.sparta.deliverypathservice.global.client.UserClient;
+import com.sparta.deliverypathservice.global.domain.user.User;
+import com.sparta.deliverypathservice.global.domain.user.UserRole;
 import com.sparta.deliverypathservice.global.dto.ApiResponse;
 import com.sparta.deliverypathservice.global.dto.HubPathDto;
 import com.sparta.deliverypathservice.global.dto.UserDetailsDto;
@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -48,10 +49,17 @@ public class DeliveryPathService {
         HubPathDto hubPathDto = hubPathClient.getHubPath(reqDto.getFirstHubId(), reqDto.getFinalHubId()).getData();
 
         // api - 허브 배송담당자 배정
-        Long assignedDelivery = userClient.assignHubDeliveryManager().getData();
+        Optional<DeliveryPath> lastDeliveryPath = deliveryPathRepository.findTopByOrderByCreatedAtDesc();
+        Integer serialNum = userClient.getFirstDeliveryManager().getData();
+        if (lastDeliveryPath.isPresent()) {
+            UserDetailsDto latestUser = userClient.getUser(lastDeliveryPath.get().getHubDeliveryUserId()).getData();
+            serialNum = userClient.getNextDeliveryManager(latestUser).getData();
+        }
+        Long assignedDelivery = userClient.getDeliveryManager(serialNum).getData();
 
-        // api - 배송담당자, 허브담당자에게 슬랙 메세지 전송
-        slackClient.sendMessage(assignedDelivery, "새로운 배송 요청이 들어왔습니다");
+        // api - 배송담당자에게 슬랙 메세지 전송
+        String slackId = userClient.getUser(assignedDelivery).getData().getUser().getSlackAccountId();
+        slackClient.sendMessage(slackId, "새로운 배송 요청이 들어왔습니다");
 
         // 반환 : 순서, 출발허브, 도착허브, 예상거리, 예상시간, 현상태=허브대기중,  허브 배송담당자 id
         DeliveryPath entity = reqDto.toEntity();
@@ -115,7 +123,7 @@ public class DeliveryPathService {
         if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) { //허브 관리자
             //삭제x && (출발허브=담당허브 || 도착허브=담당허브)
             UUID hubId = user.getHubId();
-            DeliveryPath entity = deliveryPathRepository.findByStartHubIdOrEndHubIdAndDeletedAtIsNullAndId(hubId, hubId, id).orElseThrow(() ->
+            DeliveryPath entity = deliveryPathRepository.findByDeliveryPathIdAndDeletedAtIsNullAndStartHubIdOrDeliveryPathIdAndDeletedAtIsNullAndEndHubId(id, hubId, id, hubId).orElseThrow(() ->
                     new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
             );
             return getDeliveryPathResDto.toDto(entity);
@@ -123,7 +131,7 @@ public class DeliveryPathService {
 
         if(role.equals(UserRole.VENDOR_MANAGER)) { //업체담당자
             //삭제x && vendorId=담당업체(배송에서 확인)
-            DeliveryPath entity = deliveryPathRepository.findByIdAndDeletedAtIsNull(id).orElseThrow(() ->
+            DeliveryPath entity = deliveryPathRepository.findByDeliveryPathIdAndDeletedAtIsNull(id).orElseThrow(() ->
                     new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
             );
             return getDeliveryPathResDto.toDto(entity);
