@@ -1,11 +1,10 @@
 package com.sparta.deliverypathservice.global.exception;
 
-import com.sparta.deliverypathservice.global.config.ApiResponse;
+import com.sparta.deliverypathservice.global.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 

@@ -1,6 +1,6 @@
 package com.sparta.deliverypathservice.global.exception;
 
-import com.sparta.deliverypathservice.global.config.ApiResponse;
+import com.sparta.deliverypathservice.global.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.http.ResponseEntity;
