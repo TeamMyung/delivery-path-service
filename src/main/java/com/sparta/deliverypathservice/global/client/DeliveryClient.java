@@ -24,8 +24,4 @@ public interface DeliveryClient {
     //serial number순으로 정렬했을 때 주어진 userId 다음에 오는 레코드의 userId 반환
     @PostMapping("/v1/deliveries/api/next-delivery-manager")
     ApiResponse<Long> getNextDeliveryManagerUserId(Long userId);
-
-    //DeliveryManager 조회
-    @PostMapping("/v1/delivery-managers/api")
-    ApiResponse<DeliveryManager> getDeliveryManager(Long userId);
 }

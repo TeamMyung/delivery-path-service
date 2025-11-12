@@ -69,15 +69,11 @@ public class DeliveryPathService {
         return CreateDeliveryPathResDto.toDto(entity);
     }
 
-    public Page<GetDeliveryPathListResDto> getDeliveryPaths(String token, GetDeliveryPathListReqDto reqDto) {
+    public Page<GetDeliveryPathListResDto> getDeliveryPaths(UserRole role, Long userId, UUID hubId, UUID vendorId, GetDeliveryPathListReqDto reqDto) {
 
         Sort.Direction direction = reqDto.getPageable().isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, reqDto.getPageable().getSortBy());
         Pageable pageable = PageRequest.of(reqDto.getPageable().getPage(), reqDto.getPageable().getSize(), sort);
-
-        ApiResponse<User> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData();
-        UserRole role = user.getRole();
 
         //어드민 : 모든 항목 조회
         if(role.equals(UserRole.MASTER)) {
@@ -86,15 +82,13 @@ public class DeliveryPathService {
         }
 
         //허브 관리자 : 삭제x && (출발허브=담당허브 || 도착허브=담당허브)
-        if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) {
-            UUID hubId = user.getHubId();
+        if(role.equals(UserRole.HUB_MANAGER) && vendorId == null) {
             Page<DeliveryPath> paths = deliveryPathRepository.findAllByStartHubIdOrEndHubIdAndDeletedAtIsNull(hubId, hubId, pageable);
             return paths.map(GetDeliveryPathListResDto::new);
         }
 
         //허브배송담당자 : 삭제x && 배송담당자=본인
         if(role.equals(UserRole.DELIVERY_MANAGER)) {
-            Long userId = user.getUserId();
             Page<DeliveryPath> paths = deliveryPathRepository.findAllByHubDeliveryUserIdAndDeletedAtIsNull(userId, pageable);
             return paths.map(GetDeliveryPathListResDto::new);
         }
@@ -102,11 +96,11 @@ public class DeliveryPathService {
         throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, "getDeliveryPaths(%s): 권한없음".formatted(role.toString()));
     }
 
-    public getDeliveryPathResDto getDeliveryPath(String token, UUID id) {
+    public getDeliveryPathResDto getDeliveryPath(UserRole role, UUID hubId, UUID vendorId, UUID id) {
 
-        ApiResponse<User> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData();
-        UserRole role = user.getRole();
+//        ApiResponse<User> apiResponse = userClient.getUser(token);
+//        User user = apiResponse.getData();
+//        UserRole role = user.getRole();
 
         //어드민 : 모든 항목에서 조회
         if(role.equals(UserRole.MASTER)) {
@@ -117,8 +111,7 @@ public class DeliveryPathService {
         }
 
         //허브 관리자 : 삭제x && (출발허브=담당허브 || 도착허브=담당허브)
-        if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) {
-            UUID hubId = user.getHubId();
+        if(role.equals(UserRole.HUB_MANAGER) && vendorId == null) {
             DeliveryPath entity = deliveryPathRepository.findByDeliveryPathIdAndDeletedAtIsNullAndStartHubIdOrDeliveryPathIdAndDeletedAtIsNullAndEndHubId(id, hubId, id, hubId).orElseThrow(() ->
                     new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
             );
@@ -150,16 +143,14 @@ public class DeliveryPathService {
     }
 
     @Transactional
-    public List<DeleteDeliveryPathResDto> deleteDeliveryPath(List<UUID> paths, String token) {
+    public List<DeleteDeliveryPathResDto> deleteDeliveryPath(List<UUID> paths, Long userId) {
         List<DeliveryPath> entities = new ArrayList<>();
-        ApiResponse<User> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData();
 
         paths.forEach(id -> {
             DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow( () ->
                 new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 삭제 : 대상 레코드를 찾을 수 없습니다")
             );
-            entity.delete(user.getUserId());
+            entity.delete(userId);
             entities.add(entity);
         });
 

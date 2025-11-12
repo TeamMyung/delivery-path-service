@@ -21,6 +21,13 @@ import java.util.UUID;
 @RequestMapping("/v1/delivery-paths/api")
 public class DeliveryPathApiController {
 
+    private static final String ROLE_HEADER = "role";
+    private static final String USER_ID_HEADER = "user_id";
+    private static final String HUB_ID_HEADER = "hub_id";
+    private static final String VENDOR_ID_HEADER = "vendor_id";
+    private static final String DELIVERY_TYPE_HEADER = "delivery_type";
+
+
     private final DeliveryPathService deliveryPathService;
 
     @Operation(summary = "배송 경로 자동 생성", description = "주문이 생성되면 배송 경로를 생성하는 API 입니다.")
@@ -36,14 +43,14 @@ public class DeliveryPathApiController {
     @DeleteMapping
     public ApiResponse<List<DeleteDeliveryPathResDto>> deleteDeliveryPath(
             @RequestBody List<UUID> paths,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String token
+            @RequestHeader(USER_ID_HEADER) Long userId
     ) {
-        List<DeleteDeliveryPathResDto> data = deliveryPathService.deleteDeliveryPath(paths, token);
+        List<DeleteDeliveryPathResDto> data = deliveryPathService.deleteDeliveryPath(paths, userId);
         return new ApiResponse<>(data);
     }
 
     @Operation(summary = "배송 경로 상태 자동 변경", description = "배송 상태가 변경되면 배송 경로 상태를 변경하는 API 입니다.")
-    @PatchMapping("{id}/state")
+    @PatchMapping("/{id}")
     public ApiResponse<UpdateDeliveryPathStateResDto> updateDeliveryPathState(
             @PathVariable UUID id,
             @RequestParam DeliveryPathState state
