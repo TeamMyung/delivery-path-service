@@ -1,6 +1,8 @@
 package com.sparta.deliverypathservice.controller;
 
 import com.sparta.deliverypathservice.domain.DeliveryPathState;
+import com.sparta.deliverypathservice.global.client.DeliveryClient;
+import com.sparta.deliverypathservice.global.domain.user.DeliveryManager;
 import com.sparta.deliverypathservice.global.domain.user.DeliveryType;
 import com.sparta.deliverypathservice.global.domain.user.User;
 import com.sparta.deliverypathservice.global.domain.user.UserRole;
@@ -31,6 +33,7 @@ public class DeliveryPathController {
 
     private final DeliveryPathService deliveryPathService;
     private final UserClient userClient;
+    private final DeliveryClient deliveryClient;
 
     @Operation(summary = "배송 경로 생성", description = "어드민이 배송 경로를 생성하는 API 입니다.")
     @PostMapping
@@ -53,12 +56,13 @@ public class DeliveryPathController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String token
     ) {
         // 권한 확인 : 어드민, 허브관리자, 허브배송담당자
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
+        DeliveryManager deliveryManager = deliveryClient.getDeliveryManager(user.getUserId()).getData();
         if(user.getRole() != UserRole.MASTER && user.getRole() != UserRole.HUB_MANAGER && user.getRole() != UserRole.DELIVERY_MANAGER) {
             throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, "배송 경로 리스트 조회: 권한 없음");
         }
-        if(user.getRole() == UserRole.DELIVERY_MANAGER && apiResponse.getData().getDeliveryManager().getType() != DeliveryType.HUB_TO_HUB) {
+        if(user.getRole() == UserRole.DELIVERY_MANAGER && deliveryManager.getType() != DeliveryType.HUB_TO_HUB) {
             throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, "배송 경로 리스트 조회: 권한 없음");
         }
 
@@ -73,8 +77,8 @@ public class DeliveryPathController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String token
     ) {
         // 권한 확인 : 어드민, 허브관리자, 업체담당자
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
         if(user.getRole() != UserRole.MASTER && user.getRole() != UserRole.HUB_MANAGER && user.getRole() != UserRole.VENDOR_MANAGER) {
             throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, "배송 경로 상세 조회: 권한 없음");
         }
@@ -118,12 +122,13 @@ public class DeliveryPathController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String token
     ) {
         // 권한 확인 : 어드민, 허브배송담당자
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
+        DeliveryManager deliveryManager = deliveryClient.getDeliveryManager(user.getUserId()).getData();
         if(user.getRole() != UserRole.MASTER && user.getRole() != UserRole.DELIVERY_MANAGER) {
             throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, "배송 경로 상태 변경: 권한 없음");
         }
-        if(user.getRole() == UserRole.DELIVERY_MANAGER && apiResponse.getData().getDeliveryManager().getType() != DeliveryType.HUB_TO_HUB) {
+        if(user.getRole() == UserRole.DELIVERY_MANAGER && deliveryManager.getType() != DeliveryType.HUB_TO_HUB) {
             throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, "배송 경로 상태 변경: 권한 없음");
         }
 
@@ -132,8 +137,8 @@ public class DeliveryPathController {
     }
 
     private void checkAdmin(String token, String method) {
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
         if(user.getRole() != UserRole.MASTER) {
             throw new DeliveryPathException(ErrorCode.DELIVERY_PATH_FORBIDDEN, method + " : 어드민 권한 없음");
         }

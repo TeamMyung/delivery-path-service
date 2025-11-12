@@ -13,8 +13,11 @@ import com.sparta.deliverypathservice.global.client.UserClient;
 import com.sparta.deliverypathservice.global.domain.user.User;
 import com.sparta.deliverypathservice.global.domain.user.UserRole;
 import com.sparta.deliverypathservice.global.dto.ApiResponse;
-import com.sparta.deliverypathservice.global.dto.HubPathDto;
 import com.sparta.deliverypathservice.global.dto.UserDetailsDto;
+import com.sparta.deliverypathservice.global.dto.request.GetHubPathReqDto;
+import com.sparta.deliverypathservice.global.dto.request.SendMessageReqDto;
+import com.sparta.deliverypathservice.global.dto.request.UpdateDeliveryStateReqDto;
+import com.sparta.deliverypathservice.global.dto.response.GetHubPathResDto;
 import com.sparta.deliverypathservice.global.exception.DeliveryPathException;
 import com.sparta.deliverypathservice.global.exception.ErrorCode;
 import com.sparta.deliverypathservice.repository.DeliveryPathRepository;
@@ -46,58 +49,51 @@ public class DeliveryPathService {
     public CreateDeliveryPathResDto create(@Valid CreateDeliveryPathReqDto reqDto) {
 
         // api - 허브 경로 검색 : 출발허브, 도착허브 -> 예상 거리, 시간
-        HubPathDto hubPathDto = hubPathClient.getHubPath(reqDto.getFirstHubId(), reqDto.getFinalHubId()).getData();
+        GetHubPathResDto getHubPathResDto = searchHubPath(reqDto.getFirstHubId(), reqDto.getFinalHubId());
 
         // api - 허브 배송담당자 배정
-        Optional<DeliveryPath> lastDeliveryPath = deliveryPathRepository.findTopByOrderByCreatedAtDesc();
-        Integer serialNum = userClient.getFirstDeliveryManager().getData();
-        if (lastDeliveryPath.isPresent()) {
-            UserDetailsDto latestUser = userClient.getUser(lastDeliveryPath.get().getHubDeliveryUserId()).getData();
-            serialNum = userClient.getNextDeliveryManager(latestUser).getData();
-        }
-        Long assignedDelivery = userClient.getDeliveryManager(serialNum).getData();
+        Long assignedDeliveryUserId = assignHubDeliveryManager();
 
-        // api - 배송담당자에게 슬랙 메세지 전송
-        String slackId = userClient.getUser(assignedDelivery).getData().getUser().getSlackAccountId();
-        slackClient.sendMessage(slackId, "새로운 배송 요청이 들어왔습니다");
+        // TODO api - 배송담당자에게 슬랙 메세지 전송
+//        sendNewDeliveryMessageToHubDeliveryManager(assignedDeliveryUserId);
 
-        // 반환 : 순서, 출발허브, 도착허브, 예상거리, 예상시간, 현상태=허브대기중,  허브 배송담당자 id
+        // 저장 : 순서, 출발허브, 도착허브, 예상거리, 예상시간, 현상태=허브대기중,  허브 배송담당자 id
         DeliveryPath entity = reqDto.toEntity();
         entity.setSequence(1);
         entity.setStatus(DeliveryPathState.HUB_WAIT);
-        entity.setEstimated_distance(hubPathDto.getDistance());
-        entity.setEstimated_time(hubPathDto.getDuration());
-        entity.setHubDeliveryUserId(assignedDelivery);
-
+        entity.setEstimated_distance(getHubPathResDto.getDistance());
+        entity.setEstimated_time(getHubPathResDto.getDuration());
+        entity.setHubDeliveryUserId(assignedDeliveryUserId);
         entity = deliveryPathRepository.save(entity);
+
         return CreateDeliveryPathResDto.toDto(entity);
     }
 
     public Page<GetDeliveryPathListResDto> getDeliveryPaths(String token, GetDeliveryPathListReqDto reqDto) {
 
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
-        UserRole role = user.getRole();
-
         Sort.Direction direction = reqDto.getPageable().isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, reqDto.getPageable().getSortBy());
         Pageable pageable = PageRequest.of(reqDto.getPageable().getPage(), reqDto.getPageable().getSize(), sort);
 
-        if(role.equals(UserRole.MASTER)) { //어드민
-            //모든 항목 조회
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
+        UserRole role = user.getRole();
+
+        //어드민 : 모든 항목 조회
+        if(role.equals(UserRole.MASTER)) {
             Page<DeliveryPath> paths = deliveryPathRepository.findAll(pageable);
             return paths.map(GetDeliveryPathListResDto::new);
         }
 
-        if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) { //허브 관리자
-            //삭제x && (출발허브=담당허브 || 도착허브=담당허브)
+        //허브 관리자 : 삭제x && (출발허브=담당허브 || 도착허브=담당허브)
+        if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) {
             UUID hubId = user.getHubId();
             Page<DeliveryPath> paths = deliveryPathRepository.findAllByStartHubIdOrEndHubIdAndDeletedAtIsNull(hubId, hubId, pageable);
             return paths.map(GetDeliveryPathListResDto::new);
         }
 
-        if(role.equals(UserRole.DELIVERY_MANAGER)) { //허브배송담당자
-            //삭제x && 배송담당자=본인
+        //허브배송담당자 : 삭제x && 배송담당자=본인
+        if(role.equals(UserRole.DELIVERY_MANAGER)) {
             Long userId = user.getUserId();
             Page<DeliveryPath> paths = deliveryPathRepository.findAllByHubDeliveryUserIdAndDeletedAtIsNull(userId, pageable);
             return paths.map(GetDeliveryPathListResDto::new);
@@ -108,20 +104,20 @@ public class DeliveryPathService {
 
     public getDeliveryPathResDto getDeliveryPath(String token, UUID id) {
 
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
         UserRole role = user.getRole();
 
-        if(role.equals(UserRole.MASTER)) { //어드민
-            //모든 항목에서 조회
+        //어드민 : 모든 항목에서 조회
+        if(role.equals(UserRole.MASTER)) {
             DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow(() ->
                     new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
             );
             return getDeliveryPathResDto.toDto(entity);
         }
 
-        if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) { //허브 관리자
-            //삭제x && (출발허브=담당허브 || 도착허브=담당허브)
+        //허브 관리자 : 삭제x && (출발허브=담당허브 || 도착허브=담당허브)
+        if(role.equals(UserRole.HUB_MANAGER) && user.getVendorId() == null) {
             UUID hubId = user.getHubId();
             DeliveryPath entity = deliveryPathRepository.findByDeliveryPathIdAndDeletedAtIsNullAndStartHubIdOrDeliveryPathIdAndDeletedAtIsNullAndEndHubId(id, hubId, id, hubId).orElseThrow(() ->
                     new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
@@ -129,8 +125,8 @@ public class DeliveryPathService {
             return getDeliveryPathResDto.toDto(entity);
         }
 
-        if(role.equals(UserRole.VENDOR_MANAGER)) { //업체담당자
-            //삭제x && vendorId=담당업체(배송에서 확인)
+        //업체담당자 : 삭제x && vendorId=담당업체(배송에서 확인)
+        if(role.equals(UserRole.VENDOR_MANAGER)) {
             DeliveryPath entity = deliveryPathRepository.findByDeliveryPathIdAndDeletedAtIsNull(id).orElseThrow(() ->
                     new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 상세 조회 : 대상 레코드를 찾을 수 없습니다")
             );
@@ -146,6 +142,7 @@ public class DeliveryPathService {
         DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow(() ->
                 new DeliveryPathException(ErrorCode.DELIVERY_PATH_NOT_FOUND, "배송 경로 수정 : 대상 레코드를 찾을 수 없습니다")
         );
+
         entity.setStatus(reqDto.getStatus());
         entity.setHubDeliveryUserId(reqDto.getHubDeliveryUserId());
 
@@ -155,8 +152,8 @@ public class DeliveryPathService {
     @Transactional
     public List<DeleteDeliveryPathResDto> deleteDeliveryPath(List<UUID> paths, String token) {
         List<DeliveryPath> entities = new ArrayList<>();
-        ApiResponse<UserDetailsDto> apiResponse = userClient.getUser(token);
-        User user = apiResponse.getData().getUser();
+        ApiResponse<User> apiResponse = userClient.getUser(token);
+        User user = apiResponse.getData();
 
         paths.forEach(id -> {
             DeliveryPath entity = deliveryPathRepository.findById(id).orElseThrow( () ->
@@ -165,6 +162,7 @@ public class DeliveryPathService {
             entity.delete(user.getUserId());
             entities.add(entity);
         });
+
         return entities.stream().map(DeleteDeliveryPathResDto::new).collect(Collectors.toList());
     }
 
@@ -181,10 +179,59 @@ public class DeliveryPathService {
         }
 
         // api - 배송 상태 변경
-        deliveryClient.updateDeliveryPathState(id, state);
+        changeDeliveryState(id, state);
 
         entity.setStatus(state);
 
         return UpdateDeliveryPathStateResDto.toDto(entity);
+    }
+
+
+
+    private GetHubPathResDto searchHubPath(UUID sHubId, UUID eHubId) {
+        GetHubPathReqDto getHubPathReqDto = new GetHubPathReqDto(sHubId, eHubId);
+        GetHubPathResDto getHubPathResDto = hubPathClient.getHubPath(sHubId, eHubId).getData();
+
+        if(getHubPathResDto == null) {
+            //조회된 허브 경로 없음
+        }
+
+        return getHubPathResDto;
+    }
+
+    private Long assignHubDeliveryManager() {
+        Long nextDeliveryManagerUserId = null;
+
+        Optional<DeliveryPath> lastDeliveryPath = deliveryPathRepository.findTopByOrderByCreatedAtDesc();
+        if (lastDeliveryPath.isPresent()) {
+            Long lastestHubDeliveryUserId = lastDeliveryPath.get().getHubDeliveryUserId();
+            nextDeliveryManagerUserId = deliveryClient.getNextDeliveryManagerUserId(lastestHubDeliveryUserId).getData();
+        } else {
+            nextDeliveryManagerUserId = deliveryClient.getFirstDeliveryManagerUserId().getData();
+        }
+        if(nextDeliveryManagerUserId == null){
+            //배송 담당자 없음
+        }
+        if(nextDeliveryManagerUserId == null){
+            //해당 순번의 배송 담당자 없음
+        }
+
+        return nextDeliveryManagerUserId;
+    }
+
+    private void sendNewDeliveryMessageToHubDeliveryManager(Long assignedDeliveryUserId) {
+        String slackId = userClient.getSlackAccountId(assignedDeliveryUserId).getData();
+        if(slackId == null) {
+            //조회된 값 없음
+        }
+
+        SendMessageReqDto sendMessageReqDto = new SendMessageReqDto();
+        sendMessageReqDto.newDeliveryMessageToHubDeliveryManager(slackId);
+        slackClient.sendMessage(sendMessageReqDto);
+    }
+
+    private void changeDeliveryState(UUID id, DeliveryPathState state) {
+        UpdateDeliveryStateReqDto updateDeliveryStateReqDto = new UpdateDeliveryStateReqDto(id, state);
+        deliveryClient.updateDeliveryState(updateDeliveryStateReqDto);
     }
 }
