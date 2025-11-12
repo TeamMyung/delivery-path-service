@@ -5,18 +5,18 @@ spring:
   application:
     name: delivery-path-service
 
-  jpa: #JPA 설정
+  jpa:
     hibernate:
-      ddl-auto: create-drop         #테이블과 객체가 일치하는지 확인, create: 테이블 생성, create-drop: 서버 끄면 테이블 drop하고 키면 create, update: 다른 점있으면 업데이트, validate: 맵핑만 확인, none: 아무것도 안 함
+      ddl-auto: create-drop
     properties:
       hibernate:
-        show_sql: true           #실행한 SQL문 출력
-        format_sql: true         #SQL문 출력할 때 읽기 쉬운 형태로 출력
+        show_sql: true
+        format_sql: true
     database: postgresql
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
-  datasource: #데이터베이스 연결 설정
-    url: jdbc:postgresql://localhost:5432/postgres
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     driver-class-name: org.postgresql.Driver
     username: postgres
     password: 1234!
@@ -29,3 +29,9 @@ eureka:
     fetch-registry: true
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+
+springdoc:
+  swagger-ui:
+    url: /${spring.application.name}/v3/api-docs
+  api-docs:
+    path: /${spring.application.name}/v3/api-docs
