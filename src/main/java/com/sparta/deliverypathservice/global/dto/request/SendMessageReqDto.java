@@ -1,6 +1,5 @@
 package com.sparta.deliverypathservice.global.dto.request;
 
-import com.sparta.deliverypathservice.domain.DeliveryPath;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

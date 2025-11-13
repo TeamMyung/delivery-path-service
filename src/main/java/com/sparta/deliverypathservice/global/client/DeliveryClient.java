@@ -1,16 +1,11 @@
 package com.sparta.deliverypathservice.global.client;
 
-import com.sparta.deliverypathservice.global.domain.user.DeliveryManager;
 import com.sparta.deliverypathservice.global.dto.ApiResponse;
-import com.sparta.deliverypathservice.global.dto.UserDetailsDto;
-import com.sparta.deliverypathservice.global.dto.request.GetCurrentDeliveryManagerIdReqDto;
-import com.sparta.deliverypathservice.global.dto.request.GetNextDeliveryManagerIdReqDto;
 import com.sparta.deliverypathservice.global.dto.request.UpdateDeliveryStateReqDto;
-import com.sparta.deliverypathservice.global.dto.response.GetCurrentDeliveryManagerIdResDto;
-import com.sparta.deliverypathservice.global.dto.response.GetNextDeliveryManagerIdResDto;
 import com.sparta.deliverypathservice.global.dto.response.UpdateDeliveryStatusResDto;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 

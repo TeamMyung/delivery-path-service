@@ -4,8 +4,6 @@ import com.sparta.deliverypathservice.global.dto.request.SendMessageReqDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 
-import java.util.UUID;
-
 @FeignClient(name = "slack-service")
 public interface SlackClient {
 

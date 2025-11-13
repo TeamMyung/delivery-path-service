@@ -4,7 +4,6 @@ import com.sparta.deliverypathservice.global.domain.user.DeliveryType;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
