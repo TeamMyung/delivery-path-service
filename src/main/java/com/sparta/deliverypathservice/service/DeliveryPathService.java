@@ -6,18 +6,15 @@ import com.sparta.deliverypathservice.dto.request.CreateDeliveryPathReqDto;
 import com.sparta.deliverypathservice.dto.request.GetDeliveryPathListReqDto;
 import com.sparta.deliverypathservice.dto.request.UpdateDeliveryPathReqDto;
 import com.sparta.deliverypathservice.dto.response.*;
-import com.sparta.deliverypathservice.global.client.DeliveryClient;
-import com.sparta.deliverypathservice.global.client.HubPathClient;
-import com.sparta.deliverypathservice.global.client.SlackClient;
-import com.sparta.deliverypathservice.global.client.UserClient;
+import com.sparta.deliverypathservice.global.client.*;
+import com.sparta.deliverypathservice.global.domain.user.DeliveryType;
 import com.sparta.deliverypathservice.global.domain.user.User;
 import com.sparta.deliverypathservice.global.domain.user.UserRole;
 import com.sparta.deliverypathservice.global.dto.ApiResponse;
 import com.sparta.deliverypathservice.global.dto.UserDetailsDto;
-import com.sparta.deliverypathservice.global.dto.request.GetHubPathReqDto;
-import com.sparta.deliverypathservice.global.dto.request.SendMessageReqDto;
-import com.sparta.deliverypathservice.global.dto.request.UpdateDeliveryStateReqDto;
+import com.sparta.deliverypathservice.global.dto.request.*;
 import com.sparta.deliverypathservice.global.dto.response.GetHubPathResDto;
+import com.sparta.deliverypathservice.global.dto.response.UpdateDeliveryStatusResDto;
 import com.sparta.deliverypathservice.global.exception.DeliveryPathException;
 import com.sparta.deliverypathservice.global.exception.ErrorCode;
 import com.sparta.deliverypathservice.repository.DeliveryPathRepository;
@@ -45,6 +42,7 @@ public class DeliveryPathService {
     private final HubPathClient hubPathClient;
     private final SlackClient slackClient;
     private final DeliveryClient deliveryClient;
+    private final DeliveryManagerClient deliveryManagerClient;
 
     public CreateDeliveryPathResDto create(@Valid CreateDeliveryPathReqDto reqDto) {
 
@@ -195,10 +193,12 @@ public class DeliveryPathService {
 
         Optional<DeliveryPath> lastDeliveryPath = deliveryPathRepository.findTopByOrderByCreatedAtDesc();
         if (lastDeliveryPath.isPresent()) {
-            Long lastestHubDeliveryUserId = lastDeliveryPath.get().getHubDeliveryUserId();
-            nextDeliveryManagerUserId = deliveryClient.getNextDeliveryManagerUserId(lastestHubDeliveryUserId).getData();
+//            Long lastestHubDeliveryUserId = lastDeliveryPath.get().getHubDeliveryUserId();
+            GetNextDeliveryManagerIdReqDto reqDto = new GetNextDeliveryManagerIdReqDto(DeliveryType.HUB_TO_HUB, null);
+            nextDeliveryManagerUserId = deliveryManagerClient.getNextDeliveryManagerUserId(reqDto).getData().getDeliveryManagerId();
         } else {
-            nextDeliveryManagerUserId = deliveryClient.getFirstDeliveryManagerUserId().getData();
+            GetCurrentDeliveryManagerIdReqDto reqDto = new GetCurrentDeliveryManagerIdReqDto(DeliveryType.HUB_TO_HUB, null);
+            nextDeliveryManagerUserId = deliveryManagerClient.getFirstDeliveryManagerUserId(reqDto).getData().getDeliveryManagerId();
         }
         if(nextDeliveryManagerUserId == null){
             //배송 담당자 없음
@@ -211,7 +211,7 @@ public class DeliveryPathService {
     }
 
     private void sendNewDeliveryMessageToHubDeliveryManager(Long assignedDeliveryUserId) {
-        String slackId = userClient.getSlackAccountId(assignedDeliveryUserId).getData();
+        String slackId = userClient.getSlackAccountId(assignedDeliveryUserId).getData().getSlackAccountId();
         if(slackId == null) {
             //조회된 값 없음
         }
@@ -222,7 +222,10 @@ public class DeliveryPathService {
     }
 
     private void changeDeliveryState(UUID id, DeliveryPathState state) {
-        UpdateDeliveryStateReqDto updateDeliveryStateReqDto = new UpdateDeliveryStateReqDto(id, state);
-        deliveryClient.updateDeliveryState(updateDeliveryStateReqDto);
+        UpdateDeliveryStateReqDto updateDeliveryStateReqDto = new UpdateDeliveryStateReqDto(state);
+        ApiResponse<UpdateDeliveryStatusResDto> apiResponse = deliveryClient.updateDeliveryState(id, updateDeliveryStateReqDto);
+        if(apiResponse.getStatus() != 200) {
+            //재전송
+        }
     }
 }

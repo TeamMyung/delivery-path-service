@@ -13,6 +13,5 @@ import java.util.UUID;
 @AllArgsConstructor
 public class UpdateDeliveryStateReqDto {
 
-    private UUID deliveryId;
     private DeliveryPathState state;
 }
